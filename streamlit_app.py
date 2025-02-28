@@ -1,7 +1,8 @@
 import streamlit as st
 import mysql.connector
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Fungsi untuk koneksi ke database MySQL
 def connect_to_db():
@@ -56,16 +57,14 @@ st.subheader("Chart untuk Tabel Transaction")
 if not transaction_df.empty:
     # Contoh pengolahan data: menghitung jumlah transaksi per bulan
     transaction_df['transaction_date'] = pd.to_datetime(transaction_df['transaction_date'])
-    transaction_df['month'] = transaction_df['transaction_date'].dt.to_period('M')
-    monthly_transactions = transaction_df.groupby('month').size()
+    transaction_df['month'] = transaction_df['transaction_date'].dt.to_period('M').astype(str)
+    monthly_transactions = transaction_df.groupby('month').size().reset_index(name='count')
+    monthly_transactions['month'] = monthly_transactions['month'].astype(str)
 
-    # Menampilkan chart
-    fig, ax = plt.subplots()
-    monthly_transactions.plot(kind='bar', ax=ax)
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Number of Transactions")
-    ax.set_title("Monthly Transactions")
-    st.pyplot(fig)
+    # Menampilkan chart interaktif dengan plotly
+    fig = px.bar(monthly_transactions, x='month', y='count', title='Monthly Transactions', labels={'month': 'Month', 'count': 'Number of Transactions'})
+    fig.update_layout(xaxis_title='Month', yaxis_title='Number of Transactions')
+    st.plotly_chart(fig)
 else:
     st.write("Tidak ada data di tabel transaction.")
 
@@ -77,15 +76,15 @@ if not transaction_df.empty and not listing_df.empty:
 
     # Menghitung jumlah transaksi per bulan berdasarkan condition
     merged_df['transaction_date'] = pd.to_datetime(merged_df['transaction_date'])
-    merged_df['month'] = merged_df['transaction_date'].dt.to_period('M')
-    condition_sales = merged_df.groupby(['month', 'condition']).size().unstack(fill_value=0)
+    condition_sales = merged_df.groupby([merged_df['transaction_date'].dt.to_period('M').astype(str), 'condition']).size().unstack(fill_value=0).reset_index()
+    condition_sales.rename(columns={'transaction_date': 'month'}, inplace=True)
+    condition_sales = merged_df.groupby(['month', 'condition']).size().unstack(fill_value=0).reset_index()
 
-    # Menampilkan chart garis
-    fig, ax = plt.subplots()
-    condition_sales.plot(kind='line', ax=ax)
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Number of Sales")
-    ax.set_title("Monthly Sales by Condition")
-    st.pyplot(fig)
+    # Menampilkan chart garis interaktif dengan plotly
+    fig = go.Figure()
+    for condition in condition_sales.columns[1:]:
+        fig.add_trace(go.Scatter(x=condition_sales['month'], y=condition_sales[condition], mode='lines+markers', name=condition))
+    fig.update_layout(title='Monthly Sales by Condition', xaxis_title='Month', yaxis_title='Number of Sales')
+    st.plotly_chart(fig)
 else:
     st.write("Tidak ada data yang cukup untuk menampilkan chart.")
