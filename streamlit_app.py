@@ -68,3 +68,24 @@ if not transaction_df.empty:
     st.pyplot(fig)
 else:
     st.write("Tidak ada data di tabel transaction.")
+
+# Mengolah data dan menampilkan chart garis naik turun penjualan listing berdasarkan condition
+st.subheader("Chart Garis Naik Turun Penjualan Listing Berdasarkan Condition")
+if not transaction_df.empty and not listing_df.empty:
+    # Menggabungkan data transaction dan listing berdasarkan listing_id
+    merged_df = pd.merge(transaction_df, listing_df, left_on='listing_id', right_on='id')
+
+    # Menghitung jumlah transaksi per bulan berdasarkan condition
+    merged_df['transaction_date'] = pd.to_datetime(merged_df['transaction_date'])
+    merged_df['month'] = merged_df['transaction_date'].dt.to_period('M')
+    condition_sales = merged_df.groupby(['month', 'condition']).size().unstack(fill_value=0)
+
+    # Menampilkan chart garis
+    fig, ax = plt.subplots()
+    condition_sales.plot(kind='line', ax=ax)
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Number of Sales")
+    ax.set_title("Monthly Sales by Condition")
+    st.pyplot(fig)
+else:
+    st.write("Tidak ada data yang cukup untuk menampilkan chart.")
